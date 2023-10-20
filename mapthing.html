@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flight Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        #map {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .plane-icon {
+            width: 32px;
+            height: 32px;
+            background-image: url('bluearrow.png'); /* Replace with the new plane icon URL */
+            background-size: cover;
+        }
+
+        .atc-icon {
+            width: 44px; /* Double the size */
+            height: 44px; /* Double the size */
+            background-image: url('atc.png'); /* Replace with the ATC icon URL */
+            background-size: cover;
+        }
+
+        #refresh-button {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background-color: #0074d9;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Media query for screens smaller than 768px (typical mobile screens) */
+        @media (max-width: 768px) {
+            #refresh-button {
+                top: 70px;
+                right: 10px;
+                padding: 10px 15px; /* Make the button smaller for mobile */
+            }
+        }
+    </style>
+    <!-- Include Leaflet CSS and JavaScript -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+    <button id="refresh-button">Refresh</button>
+
+    <script>
+        // Your JavaScript code (remains unchanged)
+        // ...
+    </script>
+</body>
+</html>
