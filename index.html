@@ -19,9 +19,9 @@
         }
 
         .atc-icon {
-            width: 44px; 
-            height: 44px; 
-            background-image: url('atc.png'); 
+            width: 44px;
+            height: 44px;
+            background-image: url('atc.png');
             background-size: cover;
         }
 
@@ -37,8 +37,26 @@
             padding: 10px 20px;
             cursor: pointer;
         }
+
+        .leaflet-popup-content-wrapper {
+            background: #fff;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .leaflet-popup-content {
+            color: #333;
+        }
+
+        .leaflet-popup-close-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            color: #999;
+        }
     </style>
- 
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 </head>
@@ -47,14 +65,12 @@
     <button id="refresh-button">Refresh</button>
 
     <script>
-        // API details
         const apiKey = "16g9z0yzub3dszefdibss5455tytdhkr";
         const sessionId = "df2a8d19-3a54-4ce5-ae65-0b722186e44c";
         const aircraftApiUrl = `https://api.infiniteflight.com/public/v2/sessions/${sessionId}/flights?apikey=${apiKey}`;
         const atcApiUrl = `https://api.infiniteflight.com/public/v2/sessions/${sessionId}/atc?apikey=${apiKey}`;
         const atisApiUrl = `https://api.infiniteflight.com/public/v2/sessions/${sessionId}/airport/{airportIcao}/atis?apikey=${apiKey}`;
 
-        
         var map = L.map('map', {
             preferCanvas: true,
             layers: [
@@ -64,25 +80,20 @@
             ]
         }).setView([0, 0], 2);
 
-        
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             maxZoom: 19,
         }).addTo(map);
 
-        
         var markerLayer = L.layerGroup().addTo(map);
 
-        
         function roundToZeroDecimalPlaces(number) {
             return Math.round(number);
         }
 
-        
         function updateAircraftPositions() {
             fetch(aircraftApiUrl)
                 .then(response => response.json())
                 .then(data => {
-                    
                     markerLayer.clearLayers();
 
                     data.result.forEach(aircraft => {
@@ -96,10 +107,8 @@
 
                         const marker = L.marker([aircraft.latitude, aircraft.longitude], { icon: planeIcon });
 
-                        
                         const username = aircraft.username ? aircraft.username : "No username";
 
-                        
                         const flightInfo = `
                             <strong>Username:</strong> ${username}<br>
                             <strong>Callsign:</strong> ${aircraft.callsign}<br>
@@ -111,7 +120,6 @@
                         markerLayer.addLayer(marker);
                     });
 
-                    
                     fetch(atcApiUrl)
                         .then(response => response.json())
                         .then(atcData => {
@@ -124,7 +132,6 @@
 
                                 const atcMarker = L.marker([atc.latitude, atc.longitude], { icon: atcIcon });
 
-                                
                                 atcMarker.on('click', function () {
                                     fetch(atisApiUrl.replace('{airportIcao}', atc.airportName))
                                         .then(response => response.json())
@@ -143,10 +150,8 @@
                 .catch(error => console.error('Error fetching aircraft data:', error));
         }
 
-        
         updateAircraftPositions();
 
-        
         document.getElementById('refresh-button').addEventListener('click', function () {
             updateAircraftPositions();
         });
