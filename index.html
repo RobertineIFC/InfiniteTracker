@@ -2,7 +2,6 @@
 <html>
 <head>
     <title>Flight Tracker</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         #map {
             position: fixed;
@@ -20,8 +19,8 @@
         }
 
         .atc-icon {
-            width: 44px; /* Double the size */
-            height: 44px; /* Double the size */
+            width: 64px; /* Double the size */
+            height: 64px; /* Double the size */
             background-image: url('atc.png'); /* Replace with the ATC icon URL */
             background-size: cover;
         }
@@ -36,15 +35,6 @@
             border: none;
             cursor: pointer;
         }
-
-        /* Media query for screens smaller than 768px (typical mobile screens) */
-        @media (max-width: 768px) {
-            #refresh-button {
-                top: 70px;
-                right: 10px;
-                padding: 10px 15px; /* Make the button smaller for mobile */
-            }
-        }
     </style>
     <!-- Include Leaflet CSS and JavaScript -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
@@ -55,8 +45,109 @@
     <button id="refresh-button">Refresh</button>
 
     <script>
-        // Your JavaScript code (remains unchanged)
-        // ...
+        // API details
+        const apiKey = "16g9z0yzub3dszefdibss5455tytdhkr";
+        const sessionId = "df2a8d19-3a54-4ce5-ae65-0b722186e44c";
+        const aircraftApiUrl = `https://api.infiniteflight.com/public/v2/sessions/${sessionId}/flights?apikey=${apiKey}`;
+        const atcApiUrl = `https://api.infiniteflight.com/public/v2/sessions/${sessionId}/atc?apikey=${apiKey}`;
+        const atisApiUrl = `https://api.infiniteflight.com/public/v2/sessions/${sessionId}/airport/{airportIcao}/atis?apikey=${apiKey}`;
+
+        // Create a full-screen map
+        var map = L.map('map', {
+            preferCanvas: true,
+            layers: [
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                })
+            ]
+        }).setView([0, 0], 2);
+
+        // Set a custom Mapbox style to make the map darker
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+        }).addTo(map);
+
+        // Create a layer group for markers
+        var markerLayer = L.layerGroup().addTo(map);
+
+        // Function to round a number to 0 decimal places
+        function roundToZeroDecimalPlaces(number) {
+            return Math.round(number);
+        }
+
+        // Function to update aircraft positions
+        function updateAircraftPositions() {
+            fetch(aircraftApiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    // Clear the previous layer group
+                    markerLayer.clearLayers();
+
+                    data.result.forEach(aircraft => {
+                        const userId = aircraft.userId;
+
+                        const planeIcon = L.divIcon({
+                            className: 'plane-icon',
+                            iconSize: [32, 32],
+                            html: `<div></div>`
+                        });
+
+                        const marker = L.marker([aircraft.latitude, aircraft.longitude], { icon: planeIcon });
+
+                        // Display "No username" if the username is null
+                        const username = aircraft.username ? aircraft.username : "No username";
+
+                        // Create a pop-up with flight information, including username
+                        const flightInfo = `
+                            <strong>Username:</strong> ${username}<br>
+                            <strong>Callsign:</strong> ${aircraft.callsign}<br>
+                            <strong>Altitude:</strong> ${roundToZeroDecimalPlaces(aircraft.altitude)} feet<br>
+                            <strong>Speed:</strong> ${roundToZeroDecimalPlaces(aircraft.speed)} knots`;
+
+                        marker.bindPopup(flightInfo, { autoClose: false });
+
+                        markerLayer.addLayer(marker);
+                    });
+
+                    // Add ATC markers and ATIS popups
+                    fetch(atcApiUrl)
+                        .then(response => response.json())
+                        .then(atcData => {
+                            atcData.result.forEach(atc => {
+                                const atcIcon = L.divIcon({
+                                    className: 'atc-icon',
+                                    iconSize: [44, 44],
+                                    html: `<div></div>`
+                                });
+
+                                const atcMarker = L.marker([atc.latitude, atc.longitude], { icon: atcIcon });
+
+                                // Fetch and display ATIS when clicking on the ATC marker
+                                atcMarker.on('click', function () {
+                                    fetch(atisApiUrl.replace('{airportIcao}', atc.airportName))
+                                        .then(response => response.json())
+                                        .then(atisData => {
+                                            const atisPopup = `<strong>ATIS at ${atc.airportName}:</strong><br>${atisData.result}`;
+                                            atcMarker.bindPopup(atisPopup, { autoClose: false });
+                                        })
+                                        .catch(error => console.error('Error fetching ATIS data:', error));
+                                });
+
+                                markerLayer.addLayer(atcMarker);
+                            });
+                        })
+                        .catch(error => console.error('Error fetching ATC data:', error));
+                })
+                .catch(error => console.error('Error fetching aircraft data:', error));
+        }
+
+        // Initial update
+        updateAircraftPositions();
+
+        // Add a click event listener to the refresh button
+        document.getElementById('refresh-button').addEventListener('click', function () {
+            updateAircraftPositions();
+        });
     </script>
 </body>
 </html>
