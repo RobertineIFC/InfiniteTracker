@@ -38,6 +38,13 @@
             cursor: pointer;
         }
 
+        #last-refresh-time {
+            position: fixed;
+            top: 10px;
+            right: 150px;
+            color: #333;
+        }
+
         .leaflet-popup-content-wrapper {
             background: #fff;
             border-radius: 5px;
@@ -63,6 +70,7 @@
 <body>
     <div id="map"></div>
     <button id="refresh-button">Refresh</button>
+    <div id="last-refresh-time">Last Refresh: N/A</div>
 
     <script>
         const apiKey = "16g9z0yzub3dszefdibss5455tytdhkr";
@@ -91,14 +99,18 @@
         }
 
         function updateAircraftPositions() {
+            const lastRefreshTimeElement = document.getElementById('last-refresh-time');
+            const now = new Date();
+            const zuluTime = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}`;
+            lastRefreshTimeElement.textContent = `Last Refresh: ${zuluTime} ZULU`;
+
+            markerLayer.clearLayers();
+
             fetch(aircraftApiUrl)
                 .then(response => response.json())
                 .then(data => {
-                    markerLayer.clearLayers();
-
                     data.result.forEach(aircraft => {
                         const userId = aircraft.userId;
-
                         const planeIcon = L.divIcon({
                             className: 'plane-icon',
                             iconSize: [32, 32],
@@ -106,7 +118,6 @@
                         });
 
                         const marker = L.marker([aircraft.latitude, aircraft.longitude], { icon: planeIcon });
-
                         const username = aircraft.username ? aircraft.username : "No username";
 
                         const flightInfo = `
@@ -116,7 +127,6 @@
                             <strong>Speed:</strong> ${roundToZeroDecimalPlaces(aircraft.speed)} knots`;
 
                         marker.bindPopup(flightInfo, { autoClose: false });
-
                         markerLayer.addLayer(marker);
                     });
 
