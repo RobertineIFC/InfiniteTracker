@@ -204,7 +204,7 @@
                 .catch(error => console.error('Error fetching aircraft data:', error));
         }
         function updateATCPositions() {
-    fetch(atcApiUrl)
+        fetch(atcApiUrl)
                         .then(response => response.json())
                         .then(atcData => {
                             atcData.result.forEach(atc => {
@@ -226,7 +226,7 @@
                                 markerLayer.addLayer(atcMarker);
                             });
                         })
-        .catch(error => console.error('Error fetching ATC data:', error));
+                        .catch(error => console.error('Error fetching ATC data:', error));
 }
         updateAircraftPositions();
         updateATCPositions();
