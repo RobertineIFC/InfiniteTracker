@@ -38,7 +38,7 @@
         #last-refresh-text {
             position: fixed;
             top: 20px;
-            right: 190px;
+            right: 250px;
             color: white;
         }
         #last-refresh-time {
@@ -138,7 +138,7 @@
             const lastRefreshTimeElement = document.getElementById('last-refresh-time');
             const now = new Date();
             const zuluTime = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}:${now.getUTCSeconds().toString().padStart(2, '0')}`;
-            lastRefreshTimeElement.textContent = `Last Refresh: ${zuluTime} ZULU`;
+            lastRefreshTimeElement.textContent = ` ${zuluTime} ZULU`;
             const speedMin = parseInt(document.getElementById('speed-min').value) || 0;
             const speedMax = parseInt(document.getElementById('speed-max').value) || Number.MAX_SAFE_INTEGER;
             const altitudeMin = parseInt(document.getElementById('altitude-min').value) || 0;
