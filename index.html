@@ -35,6 +35,12 @@
             padding: 10px 20px;
             cursor: pointer;
         }
+        #last-refresh-text {
+            position: fixed;
+            top: 20px;
+            right: 190px;
+            color: white;
+        }
         #last-refresh-time {
             position: fixed;
             top: 20px;
@@ -81,6 +87,7 @@
     .filters label,
     .filters input {
         margin: 0 5px;
+        border-radius: 5px;
     }
         .filters label {
             margin-right: 5px;
@@ -93,7 +100,8 @@
 <body>
     <div id="map" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;"></div>
     <button id="refresh-button">Refresh Manually</button>
-    <div id="last-refresh-time">Last Refresh: N/A</div>
+    <div id="last-refresh-text">Last Refresh: </div>
+    <div id="last-refresh-time">N/A</div>
     <div class="filters">
         <label for="speed-min">Min Speed (Knots):</label>
         <input type="number" id="speed-min" min="0" step="10">
