@@ -14,7 +14,7 @@
         .plane-icon {
             width: 32px;
             height: 32px;
-            background-image: url('bluearrow.png');
+            background-image: url('plane-blue.png');
             background-size: cover;
         }
 
@@ -41,8 +41,15 @@
         #last-refresh-time {
             position: fixed;
             top: 20px;
-            right: 110px;
-            color: white;
+            right: 160px;
+            color: rgb(0, 190, 0);
+        }
+
+        .track-line {
+            position: absolute;
+            pointer-events: none;
+            border-bottom: 2px solid pink;
+            z-index: 1000;
         }
 
         .leaflet-popup-content-wrapper {
@@ -62,22 +69,54 @@
             right: 5px;
             color: #999;
         }
-    </style>
+        .filters {
+        position: fixed;
+        bottom: 1px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 10px;
+        background-color: rgba(255, 255, 255, 0.7);
+        border-radius: 5px;
+    }
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    .filters label,
+    .filters input {
+        margin: 0 5px;
+    }
+
+        .filters label {
+            margin-right: 5px;
+            height: 20%;
+        }
+</style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 </head>
 <body>
-    <div id="map"></div>
-    <button id="refresh-button">Refresh</button>
+    <div id="map" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;"></div>
+    <button id="refresh-button">Refresh Manually</button>
     <div id="last-refresh-time">Last Refresh: N/A</div>
+    <div class="filters">
+        <label for="speed-min">Min Speed (Knots):</label>
+        <input type="number" id="speed-min" min="0" step="10">
+        <label for="speed-max">Max Speed (Knots):</label>
+        <input type="number" id="speed-max" min="0" step="10">
+        <label for="altitude-min">Min Altitude (Feet):</label>
+        <input type="number" id="altitude-min" min="0" step="1000">
+        <label for="altitude-max">Max Altitude (Feet):</label>
+        <input type="number" id="altitude-max" min="0" step="1000">
+    </div>
+
 
     <script>
         const apiKey = "16g9z0yzub3dszefdibss5455tytdhkr";
         const sessionId = "df2a8d19-3a54-4ce5-ae65-0b722186e44c";
         const aircraftApiUrl = `https://api.infiniteflight.com/public/v2/sessions/${sessionId}/flights?apikey=${apiKey}`;
         const atcApiUrl = `https://api.infiniteflight.com/public/v2/sessions/${sessionId}/atc?apikey=${apiKey}`;
-        const atisApiUrl = `https://api.infiniteflight.com/public/v2/sessions/${sessionId}/airport/{airportIcao}/atis?apikey=${apiKey}`;
 
         var map = L.map('map', {
             preferCanvas: true,
@@ -93,6 +132,8 @@
         }).addTo(map);
 
         var markerLayer = L.layerGroup().addTo(map);
+        const aircraftMarkers = {};
+        const aircraftTracks = {};
 
         function roundToZeroDecimalPlaces(number) {
             return Math.round(number);
@@ -101,23 +142,40 @@
         function updateAircraftPositions() {
             const lastRefreshTimeElement = document.getElementById('last-refresh-time');
             const now = new Date();
-            const zuluTime = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}`;
+            const zuluTime = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}:${now.getUTCSeconds().toString().padStart(2, '0')}`;
             lastRefreshTimeElement.textContent = `Last Refresh: ${zuluTime} ZULU`;
 
-            markerLayer.clearLayers();
+            const speedMin = parseInt(document.getElementById('speed-min').value) || 0;
+            const speedMax = parseInt(document.getElementById('speed-max').value) || Number.MAX_SAFE_INTEGER;
+            const altitudeMin = parseInt(document.getElementById('altitude-min').value) || 0;
+            const altitudeMax = parseInt(document.getElementById('altitude-max').value) || Number.MAX_SAFE_INTEGER;
 
             fetch(aircraftApiUrl)
                 .then(response => response.json())
                 .then(data => {
+                    const updatedAircraftIds = [];
+
                     data.result.forEach(aircraft => {
                         const userId = aircraft.userId;
+                        const existingMarker = aircraftMarkers[userId];
+
                         const planeIcon = L.divIcon({
                             className: 'plane-icon',
                             iconSize: [32, 32],
                             html: `<div></div>`
                         });
 
-                        const marker = L.marker([aircraft.latitude, aircraft.longitude], { icon: planeIcon });
+                        let marker;
+
+                        if (existingMarker) {
+                            marker = existingMarker;
+                            marker.setLatLng([aircraft.latitude, aircraft.longitude]);
+                        } else {
+                            marker = L.marker([aircraft.latitude, aircraft.longitude], { icon: planeIcon });
+                            marker.addTo(markerLayer);
+                            aircraftMarkers[userId] = marker;
+                        }
+
                         const username = aircraft.username ? aircraft.username : "No username";
 
                         const flightInfo = `
@@ -127,44 +185,85 @@
                             <strong>Speed:</strong> ${roundToZeroDecimalPlaces(aircraft.speed)} knots`;
 
                         marker.bindPopup(flightInfo, { autoClose: false });
-                        markerLayer.addLayer(marker);
+
+                        // Track logic
+                        if (!aircraftTracks[userId]) {
+                            aircraftTracks[userId] = [];
+                        }
+                        aircraftTracks[userId].push([aircraft.latitude, aircraft.longitude]);
+
+                        if (aircraftTracks[userId].length > 1) {
+                            if (!aircraftMarkers[userId + '_track']) {
+                                aircraftMarkers[userId + '_track'] = L.polyline(aircraftTracks[userId], { color: 'pink' }).addTo(markerLayer);
+                            } else {
+                                aircraftMarkers[userId + '_track'].setLatLngs(aircraftTracks[userId]);
+                            }
+                        }
+
+                        // Apply filters
+                        if (
+                            aircraft.speed >= speedMin &&
+                            aircraft.speed <= speedMax &&
+                            aircraft.altitude >= altitudeMin &&
+                            aircraft.altitude <= altitudeMax
+                        ) {
+                            updatedAircraftIds.push(userId);
+                        }
                     });
 
-                    fetch(atcApiUrl)
-                        .then(response => response.json())
-                        .then(atcData => {
-                            atcData.result.forEach(atc => {
-                                const atcIcon = L.divIcon({
-                                    className: 'atc-icon',
-                                    iconSize: [24, 24],
-                                    html: `<div></div>`
-                                });
-
-                                const atcMarker = L.marker([atc.latitude, atc.longitude], { icon: atcIcon });
-
-                                atcMarker.on('click', function () {
-                                    fetch(atisApiUrl.replace('{airportIcao}', atc.airportName))
-                                        .then(response => response.json())
-                                        .then(atisData => {
-                                            const atisPopup = `<strong>ATIS at ${atc.airportName}:</strong><br>${atisData.result}`;
-                                            atcMarker.bindPopup(atisPopup, { autoClose: false });
-                                        })
-                                        .catch(error => console.error('Error fetching ATIS data:', error));
-                                });
-
-                                markerLayer.addLayer(atcMarker);
-                            });
-                        })
-                        .catch(error => console.error('Error fetching ATC data:', error));
+                    // Remove markers and tracks for aircraft that are no longer present or don't match filters
+                    Object.keys(aircraftMarkers).forEach(key => {
+                        if (!updatedAircraftIds.includes(key.split('_')[0])) {
+                            map.removeLayer(aircraftMarkers[key]);
+                            delete aircraftMarkers[key];
+                        }
+                    });
                 })
                 .catch(error => console.error('Error fetching aircraft data:', error));
         }
+        function updateATCPositions() {
+    fetch(atcApiUrl)
+        .then(response => response.json())
+        .then(data => {
+            // Loop through ATC data and create markers
+            data.result.forEach(atc => {
+                const atcIcon = L.divIcon({
+                    className: 'atc-icon',
+                    iconSize: [24, 24],
+                    html: `<div></div>`
+                });
+
+                const marker = L.marker([atc.latitude, atc.longitude], { icon: atcIcon });
+                marker.addTo(markerLayer);
+            });
+        })
+        .catch(error => console.error('Error fetching ATC data:', error));
+}
 
         updateAircraftPositions();
+        updateATCPositions();
 
         document.getElementById('refresh-button').addEventListener('click', function () {
             updateAircraftPositions();
         });
+
+        document.getElementById('speed-min').addEventListener('input', function () {
+            updateAircraftPositions();
+        });
+
+        document.getElementById('speed-max').addEventListener('input', function () {
+            updateAircraftPositions();
+        });
+
+        document.getElementById('altitude-min').addEventListener('input', function () {
+            updateAircraftPositions();
+        });
+
+        document.getElementById('altitude-max').addEventListener('input', function () {
+            updateAircraftPositions();
+        });
+
+        setInterval(updateAircraftPositions, 2000);
     </script>
 </body>
 </html>
