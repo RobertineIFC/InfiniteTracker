@@ -44,13 +44,12 @@
         .track-line {
             position: absolute;
             pointer-events: none;
-            border-bottom: 1px solid rgb(255,51,187);
-            border-bottom: 1px solid;
+            border-bottom: 0.5px solid rgb(255,51,187);
+            border-color: rgb(255,51,187);
             color: rgb(255,51,187);
             background-color: rgb(255,51,187);
             z-index: 1000;
         }
-
         .leaflet-popup-content-wrapper {
             background: #fff;
             border-radius: 5px;
@@ -168,9 +167,11 @@
                             aircraftTracks[userId] = [];
                         }
                         aircraftTracks[userId].push([aircraft.latitude, aircraft.longitude]);
+
                         if (aircraftTracks[userId].length > 1) {
                             if (!aircraftMarkers[userId + '_track']) {
                                 aircraftMarkers[userId + '_track'] = L.polyline(aircraftTracks[userId], { color: 'pink' }).addTo(markerLayer);
+                                aircraftMarkers[userId + '_track'] = L.polyline(aircraftTracks[userId], { color: rgb(255,51,187) }).addTo(markerLayer);
                             } else {
                                 aircraftMarkers[userId + '_track'].setLatLngs(aircraftTracks[userId]);
                             }
@@ -237,7 +238,9 @@
         document.getElementById('altitude-max').addEventListener('input', function () {
             updateAircraftPositions();
         });
+
         setInterval(updateAircraftPositions, 1000);
+        setInterval(updateAircraftPositions, 5000);
     </script>
 </body>
 </html>
