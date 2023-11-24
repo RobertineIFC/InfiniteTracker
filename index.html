@@ -224,6 +224,16 @@
                                         .catch(error => console.error('Error fetching ATIS data:', error));
                                 });
                                 markerLayer.addLayer(atcMarker);
+                                atcMarker.on('click', function () {
+            fetch(atisApiUrl.replace('{airportIcao}', atc.airportName))
+                .then(response => response.json())
+                .then(atisData => {
+                    const atisPopup = `<strong>ATIS at ${atc.airportName}:</strong><br>${atisData.result}`;
+                    atcMarker.bindPopup(atisPopup, { autoClose: false }).openPopup();
+                })
+                .catch(error => console.error('Error fetching ATIS data:', error));
+        });
+        markerLayer.addLayer(atcMarker);
                             });
                         })
                         .catch(error => console.error('Error fetching ATC data:', error));
