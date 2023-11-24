@@ -204,29 +204,32 @@
                 .catch(error => console.error('Error fetching aircraft data:', error));
         }
         function updateATCPositions() {
-        fetch(atcApiUrl)
+    fetch(atcApiUrl)
+        .then(response => response.json())
+        .then(atcData => {
+            atcData.result.forEach(atc => {
+                const atcIcon = L.divIcon({
+                    className: 'atc-icon',
+                    iconSize: [24, 24],
+                    html: `<div></div>`
+                });
+                const atcMarker = L.marker([atc.latitude, atc.longitude], { icon: atcIcon });
+                atcMarker.on('click', function () {
+                    const atisApiUrl = `https://api.infiniteflight.com/public/v2/atis/{airportIcao}?apikey=${apiKey}`;
+                    fetch(atisApiUrl.replace('{airportIcao}', atc.airportName))
                         .then(response => response.json())
-                        .then(atcData => {
-                            atcData.result.forEach(atc => {
-                                const atcIcon = L.divIcon({
-                                    className: 'atc-icon',
-                                    iconSize: [24, 24],
-                                    html: `<div></div>`
-                                });
-                                const atcMarker = L.marker([atc.latitude, atc.longitude], { icon: atcIcon });
-                                atcMarker.on('click', function () {
-                                    fetch(atisApiUrl.replace('{airportIcao}', atc.airportName))
-                                        .then(response => response.json())
-                                        .then(atisData => {
-                                            const atisPopup = `<strong>ATIS at ${atc.airportName}:</strong><br>${atisData.result}`;
-                                            atcMarker.bindPopup(atisPopup, { autoClose: false });
-                                        })
-                                        .catch(error => console.error('Error fetching ATIS data:', error));
-                                });
-                                markerLayer.addLayer(atcMarker);
-                            });
+                        .then(atisData => {
+                            const atisPopup = `<strong>ATIS at ${atc.airportName}:</strong><br>${atisData.result}`;
+                            atcMarker.bindPopup(atisPopup, { autoClose: false }).openPopup();
                         })
-                        .catch(error => console.error('Error fetching ATC data:', error));
+                        .catch(error => console.error('Error fetching ATIS data:', error));
+                });
+                markerLayer.addLayer(atcMarker);
+            });
+        })
+        .catch(error => console.error('Error fetching ATC data:', error));
+}
+
 }
         updateAircraftPositions();
         updateATCPositions();
