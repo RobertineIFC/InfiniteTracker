@@ -134,75 +134,75 @@
         function roundToZeroDecimalPlaces(number) {
             return Math.round(number);
         }
-        function updateAircraftPositions() {
-            const lastRefreshTimeElement = document.getElementById('last-refresh-time');
-            const now = new Date();
-            const zuluTime = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}:${now.getUTCSeconds().toString().padStart(2, '0')}`;
-            lastRefreshTimeElement.textContent = ` ${zuluTime} ZULU`;
-            const speedMin = parseInt(document.getElementById('speed-min').value) || 0;
-            const speedMax = parseInt(document.getElementById('speed-max').value) || Number.MAX_SAFE_INTEGER;
-            const altitudeMin = parseInt(document.getElementById('altitude-min').value) || 0;
-            const altitudeMax = parseInt(document.getElementById('altitude-max').value) || Number.MAX_SAFE_INTEGER;
-            fetch(aircraftApiUrl)
-                .then(response => response.json())
-                .then(data => {
-                    const updatedAircraftIds = [];
-                    data.result.forEach(aircraft => {
-                        const userId = aircraft.userId;
-                        const existingMarker = aircraftMarkers[userId];
-                        const planeIcon = L.divIcon({
-                            className: 'plane-icon',
-                            iconSize: [8, 8],
-                            html: `<div></div>`
-                        });
-                        let marker;
-                        if (existingMarker) {
-                            marker = existingMarker;
-                            marker.setLatLng([aircraft.latitude, aircraft.longitude]);
-                        } else {
-                            marker = L.marker([aircraft.latitude, aircraft.longitude], { icon: planeIcon });
-                            marker.addTo(markerLayer);
-                            aircraftMarkers[userId] = marker;
-                        }
-                        const username = aircraft.username ? aircraft.username : "No username";
-                        const flightInfo = `
-                            <strong>Username:</strong> ${username}<br>
-                            <strong>Callsign:</strong> ${aircraft.callsign}<br>
-                            <strong>Altitude:</strong> ${roundToZeroDecimalPlaces(aircraft.altitude)} feet<br>
-                            <strong>Speed:</strong> ${roundToZeroDecimalPlaces(aircraft.speed)} knots`;
-                        marker.bindPopup(flightInfo, { autoClose: false });
-                        // Track logic
-                        if (!aircraftTracks[userId]) {
-                            aircraftTracks[userId] = [];
-                        }
-                        aircraftTracks[userId].push([aircraft.latitude, aircraft.longitude]);
-                        if (aircraftTracks[userId].length > 1) {
-                            if (!aircraftMarkers[userId + '_track']) {
-                                aircraftMarkers[userId + '_track'] = L.polyline(aircraftTracks[userId], { color: 'green' }).addTo(markerLayer);
-                            } else {
-                                aircraftMarkers[userId + '_track'].setLatLngs(aircraftTracks[userId]);
-                            }
-                        }
-                        // Apply filters
-                        if (
-                            aircraft.speed >= speedMin &&
-                            aircraft.speed <= speedMax &&
-                            aircraft.altitude >= altitudeMin &&
-                            aircraft.altitude <= altitudeMax
-                        ) {
-                            updatedAircraftIds.push(userId);
-                        }
-                    });
-                    // Remove markers and tracks for aircraft that are no longer present or don't match filters
-                    Object.keys(aircraftMarkers).forEach(key => {
-                        if (!updatedAircraftIds.includes(key.split('_')[0])) {
-                            map.removeLayer(aircraftMarkers[key]);
-                            delete aircraftMarkers[key];
-                        }
-                    });
-                })
-                .catch(error => console.error('Error fetching aircraft data:', error));
+        async function updateAircraftPositions() {
+    const lastRefreshTimeElement = document.getElementById('last-refresh-time');
+    const now = new Date();
+    const zuluTime = `${now.getUTCHours().toString().padStart(2, '0')}:${now.getUTCMinutes().toString().padStart(2, '0')}:${now.getUTCSeconds().toString().padStart(2, '0')}`;
+    lastRefreshTimeElement.textContent = ` ${zuluTime} ZULU`;
+
+    const speedMin = parseInt(document.getElementById('speed-min').value) || 0;
+    const speedMax = parseInt(document.getElementById('speed-max').value) || Number.MAX_SAFE_INTEGER;
+    const altitudeMin = parseInt(document.getElementById('altitude-min').value) || 0;
+    const altitudeMax = parseInt(document.getElementById('altitude-max').value) || Number.MAX_SAFE_INTEGER;
+
+    try {
+        const aircraftData = await fetch(aircraftApiUrl);
+        const aircraftJson = await aircraftData.json();
+
+        const updatedAircraftIds = [];
+
+        for (const aircraft of aircraftJson.result) {
+            const userId = aircraft.userId;
+            const routeData = await fetchRouteData(aircraft.sessionId, aircraft.flightId);
+            const routeCoordinates = routeData.result.map(point => [point.latitude, point.longitude]);
+
+            const existingTrack = aircraftTracks[userId];
+            if (!existingTrack) {
+                aircraftTracks[userId] = L.polyline(routeCoordinates, { color: 'green' }).addTo(markerLayer);
+            } else {
+                existingTrack.setLatLngs(routeCoordinates);
+            }
+
+            // ... (rest of your existing logic)
+
+            // Apply filters
+            if (
+                aircraft.speed >= speedMin &&
+                aircraft.speed <= speedMax &&
+                aircraft.altitude >= altitudeMin &&
+                aircraft.altitude <= altitudeMax
+            ) {
+                updatedAircraftIds.push(userId);
+            }
         }
+
+        // Remove markers and tracks for aircraft that are no longer present or don't match filters
+        Object.keys(aircraftMarkers).forEach(key => {
+            if (!updatedAircraftIds.includes(key.split('_')[0])) {
+                map.removeLayer(aircraftMarkers[key]);
+                map.removeLayer(aircraftTracks[key]);
+                delete aircraftMarkers[key];
+                delete aircraftTracks[key];
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching aircraft data:', error);
+    }
+}
+
+async function fetchRouteData(sessionId, flightId) {
+    const routeApiUrl = `https://api.infiniteflight.com/public/v2/sessions/${sessionId}/flights/${flightId}/route`;
+    
+    try {
+        const routeData = await fetch(routeApiUrl);
+        const routeJson = await routeData.json();
+        return routeJson;
+    } catch (error) {
+        console.error('Error fetching route data:', error);
+        return { errorCode: 1, result: [] }; // Return empty result in case of error
+    }
+}
+
         function updateATCPositions() {
         fetch(atcApiUrl)
                         .then(response => response.json())
