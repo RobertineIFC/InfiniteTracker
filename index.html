@@ -195,15 +195,15 @@
                     });
                     // Remove markers and tracks for aircraft that are no longer present or don't match filters
                     Object.keys(aircraftTracks).forEach(userId => {
-                const trackPolyline = aircraftMarkers[userId + '_track'];
-                if (trackPolyline) {
-                    trackPolyline.off('click'); // Remove existing click event listeners
-                    trackPolyline.on('click', function () {
-                        map.removeLayer(trackPolyline); // Remove the clicked polyline from the map
-                        delete aircraftMarkers[userId + '_track']; // Remove reference to the polyline
+                        const trackPolyline = aircraftMarkers[userId + '_track'];
+                        if (trackPolyline) {
+                            trackPolyline.off('click'); // Remove existing click event listeners
+                            trackPolyline.on('click', function () {
+                                map.removeLayer(trackPolyline); // Remove the clicked polyline from the map
+                                delete aircraftMarkers[userId + '_track']; // Remove reference to the polyline
+                            });
+                        }
                     });
-                }
-            });
                 })
                 .catch(error => console.error('Error fetching aircraft data:', error));
         }
