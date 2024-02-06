@@ -201,7 +201,14 @@
                             trackPolyline.on('click', function () {
                                 map.removeLayer(trackPolyline); // Remove the clicked polyline from the map
                                 delete aircraftMarkers[userId + '_track']; // Remove reference to the polyline
+                                hiddenPolylines[userId] = true; // Mark the polyline as hidden
                             });
+            
+                            // Check if the polyline should remain hidden
+                            if (hiddenPolylines[userId]) {
+                                map.removeLayer(trackPolyline);
+                                delete aircraftMarkers[userId + '_track'];
+                            }
                         }
                     });
                 })
